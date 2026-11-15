@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clasificador Inteligente - Escuelas Saludables</title>
+    <!-- Estilos limpios y modernos -->
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f7f4;
+            color: #2d3748;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { color: #2b6cb0; }
+        .container {
+            background: white;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #webcam-container {
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            display: inline-block;
+            border: 4px solid #48bb78;
+        }
+        #label-container {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        .consejo-saludable {
+            background-color: #e6fffa;
+            border-left: 5px solid #319795;
+            padding: 12px;
+            margin-top: 20px;
+            text-align: left;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🌱 Clasificador de Residuos IA</h1>
+        <p>Acerca un residuo a la cámara para saber dónde reciclarlo y cuidar nuestra escuela.</p>
+        
+        <!-- Botón para iniciar -->
+        <button onclick="init()" style="padding: 10px 20px; font-size: 1rem; background-color: #48bb78; color: white; border: none; border-radius: 5px; cursor: pointer;">Encender Cámara</button>
+
+        <!-- Contenedor de la cámara -->
+        <div id="webcam-container"></div>
+        
+        <!-- Resultados del modelo -->
+        <div id="label-container">Esperando inicio...</div>
+
+        <!-- Mensaje dinámico de salud ambiental -->
+        <div class="consejo-saludable" id="consejo-box">
+            <strong>Tip saludable:</strong> Mantener limpia el área escolar previene la acumulación de plásticos y mejora el bienestar de todos.
+        </div>
+    </div>
+
+    <!-- Librerías de TensorFlow.js y Teachable Machine -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    
+    <script type="text/javascript">
+        // ¡REEMPLAZA ESTA URL CON LA DE TU MODELO DE TEACHABLE MACHINE!
+        const URL = "https://teachablemachine.withgoogle.com/models/SpYDKIo3a/";
+
+        let model, webcam, labelContainer, maxPredictions;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            // Cargar el modelo y los metadatos
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            // Configurar la webcam
+            const flip = true; // espejo
+            webcam = new tmImage.Webcam(300, 300, flip); 
+            await webcam.setup(); // Solicitar permisos de cámara
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            // Mostrar el elemento de la cámara en el DOM
+            document.getElementById("webcam-container").innerHTML = "";
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            
+            labelContainer.innerHTML = "Analizando residuos...";
+        }
+
+        async function loop() {
+            webcam.update(); // actualizar cuadro de la webcam
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            // Predicción basada en la imagen actual de la webcam
+            const prediction = await model.predict(webcam.canvas);
+            
+            // Buscar la clase con mayor porcentaje de acierto
+            let mayorProbabilidad = 0;
+            let mejorClase = "";
+
+            for (let i = 0; i < maxPredictions; i++) {
+                if (prediction[i].probability.toFixed(2) > mayorProbabilidad) {
+                    mayorProbabilidad = prediction[i].probability.toFixed(2);
+                    mejorClase = prediction[i].className;
+                }
+            }
+
+            // Mostrar el resultado en pantalla si la seguridad es alta (> 80%)
+            if (mayorProbabilidad > 0.8) {
+                labelContainer.innerHTML = `Residuo detectado: <span style="color: #38a169;">${mejorClase}</span> (${Math.round(mayorProbabilidad * 100)}%)`;
+                actualizarConsejo(mejorClase);
+            } else {
+                labelContainer.innerHTML = "Acerca más el residuo a la cámara...";
+            }
+        }
+
+        function actualizarConsejo(clase) {
+            const caja = document.getElementById("consejo-box");
+            const claseMinus = clase.toLowerCase();
+            
+            if (claseMinus.includes("plastico") || claseMinus.includes("envase")) {
+                caja.innerHTML = "<strong>Impacto en la salud:</strong> Reciclar envases plásticos evita que se fragmenten en microplásticos que contaminan el agua y los alimentos.";
+            } else if (claseMinus.includes("papel") || claseMinus.includes("carton")) {
+                caja.innerHTML = "<strong>Impacto en la salud:</strong> Reducir el desperdicio de papel disminuye la tala de árboles, mejorando la calidad del aire que respiramos en el centro.";
+            } else if (claseMinus.includes("organico")) {
+                caja.innerHTML = "<strong>Impacto en la salud:</strong> Los residuos orgánicos bien gestionados evitan la aparición de insectos y malos olores, manteniendo un comedor escolar higiénico.";
+            } else {
+                caja.innerHTML = "<strong>Tip saludable:</strong> Una correcta separación de residuos en el patio garantiza una convivencia limpia y saludable.";
+            }
+        }
+    </script>
+</body>
+</html>
