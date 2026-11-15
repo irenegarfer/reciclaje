@@ -85,9 +85,9 @@
             maxPredictions = model.getTotalClasses();
 
             // Configurar la webcam
-            const flip = true; // espejo
-            webcam = new tmImage.Webcam(300, 300, flip); 
-            await webcam.setup(); // Solicitar permisos de cámara
+            const flip = false; // Evita el efecto espejo en la cámara trasera
+            webcam = new tmImage.Webcam(200, 200, flip); 
+            await webcam.setup({ facingMode: "environment" }); // Fuerza la cámara trasera
             await webcam.play();
             window.requestAnimationFrame(loop);
 
